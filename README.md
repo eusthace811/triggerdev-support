@@ -4,6 +4,10 @@ An AI support agent for the Trigger.dev platform. Ask questions about tasks, sch
 
 Built with the Trigger.dev `chat.agent()` prerelease SDK, LanceDB hybrid search, and the AI Elements component library.
 
+<p align="center">
+  <img src="docs/reports/golden-qa-evaluation.gif" alt="Trigger Support demo" width="800">
+</p>
+
 ---
 
 ## How it works
