@@ -1,0 +1,182 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  viewBox="0 0 256 256"
+  fill="none"
+>
+  <defs>
+    <!--
+      Body gradient: Trigger.dev brand green→yellow-green,
+      bottom-to-top so the tip glows brighter (yellow) at top.
+    -->
+    <linearGradient id="bodyGrad" x1="128" y1="212" x2="128" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#41FF54"/>
+      <stop offset="100%" stop-color="#E7FF52"/>
+    </linearGradient>
+
+    <!--
+      Subtle surface glow: a white radial highlight that makes
+      the character feel lit from within.
+    -->
+    <radialGradient id="glowOverlay" cx="50%" cy="35%" r="55%" fx="50%" fy="25%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="70%"  stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!--
+      Soft green drop-shadow behind the body for a floating feel.
+    -->
+    <filter id="bodyShadow" x="-18%" y="-12%" width="136%" height="138%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8"
+                    flood-color="#2ecc40" flood-opacity="0.30"/>
+    </filter>
+
+    <!--
+      Eye-shine radial: glossy specular highlight inside each eye.
+    -->
+    <radialGradient id="eyeGloss" cx="30%" cy="28%" r="55%">
+      <stop offset="0%"   stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- ═══════════════════════════════════════════════════════
+       BODY — Trigger.dev logo mark, enlarged and centred.
+
+       Outer upward triangle:
+         apex  (128, 32)
+         BL    ( 30, 212)
+         BR    (226, 212)
+
+       Inner cutout triangle (evenodd carves a hollow arrow):
+         apex  (128, 100)
+         BL    ( 84, 178)
+         BR    (172, 178)
+
+       All face elements are placed below y=178 (fully solid
+       strip of the base) — verified via geometry.
+       ═══════════════════════════════════════════════════════ -->
+
+  <g filter="url(#bodyShadow)">
+    <!-- Green body -->
+    <path
+      fill-rule="evenodd"
+      clip-rule="evenodd"
+      d="M128,32 L226,212 L30,212 Z
+         M128,100 L84,178 L172,178 Z"
+      fill="url(#bodyGrad)"
+    />
+    <!-- Glow overlay (same clip path) -->
+    <path
+      fill-rule="evenodd"
+      clip-rule="evenodd"
+      d="M128,32 L226,212 L30,212 Z
+         M128,100 L84,178 L172,178 Z"
+      fill="url(#glowOverlay)"
+    />
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════
+       FACE — everything in the solid base strip (y 178–212).
+
+       Eyes:  cy=193, r=14   → top of eye disc at y=179 ✓
+       Brows: y=181–185      ✓ (all below 178)
+       Cheeks: cy=204        ✓
+       Smile:  y=200–206     ✓ (arc peak at y=206, inside body)
+       ═══════════════════════════════════════════════════════ -->
+
+  <!-- ── LEFT EYE ── -->
+  <!-- White sclera -->
+  <circle cx="94"  cy="193" r="14" fill="white"/>
+  <!-- Dark iris + pupil -->
+  <circle cx="95"  cy="194" r="8"  fill="#1a1a1a"/>
+  <!-- Primary gloss highlight -->
+  <circle cx="99"  cy="189" r="3.5" fill="white" opacity="0.92"/>
+  <!-- Tiny secondary sparkle -->
+  <circle cx="91"  cy="197" r="1.5" fill="white" opacity="0.55"/>
+
+  <!-- ── RIGHT EYE ── -->
+  <circle cx="162" cy="193" r="14" fill="white"/>
+  <circle cx="163" cy="194" r="8"  fill="#1a1a1a"/>
+  <circle cx="167" cy="189" r="3.5" fill="white" opacity="0.92"/>
+  <circle cx="159" cy="197" r="1.5" fill="white" opacity="0.55"/>
+
+  <!-- ── BROWS — slightly raised inner corners for curious look ── -->
+  <!-- Left brow: arcs from x=81,y=183 through x=90,y=180 to x=102,y=182 -->
+  <path
+    d="M81,183 Q91,179 103,182"
+    stroke="#1a1a1a"
+    stroke-width="2.8"
+    stroke-linecap="round"
+    fill="none"
+  />
+  <!-- Right brow -->
+  <path
+    d="M153,182 Q165,179 175,183"
+    stroke="#1a1a1a"
+    stroke-width="2.8"
+    stroke-linecap="round"
+    fill="none"
+  />
+
+  <!-- ── BLUSH CHEEKS — soft pink ovals ── -->
+  <ellipse cx="76"  cy="204" rx="12" ry="7" fill="#FF9090" opacity="0.38"/>
+  <ellipse cx="180" cy="204" rx="12" ry="7" fill="#FF9090" opacity="0.38"/>
+
+  <!-- ── SMILE — gentle upward arc ── -->
+  <path
+    d="M111,202 Q128,213 145,202"
+    stroke="#1a1a1a"
+    stroke-width="3"
+    stroke-linecap="round"
+    fill="none"
+  />
+
+  <!-- ═══════════════════════════════════════════════════════
+       ARMS — thin stick arms with little round hands,
+       reaching outward and upward (excited/waving pose).
+
+       Arm roots are at the outer body edges around y=160,
+       in the solid left/right side bands.
+
+       Body left edge at y=160:  x ≈ 57
+       Body right edge at y=160: x ≈ 199
+       ═══════════════════════════════════════════════════════ -->
+
+  <!-- Left arm -->
+  <line x1="62"  y1="162" x2="16"  y2="130"
+        stroke="#1a1a1a" stroke-width="4" stroke-linecap="round"/>
+  <!-- Left hand: outline ring + coloured fill -->
+  <circle cx="14"  cy="127" r="8"   fill="#1a1a1a"/>
+  <circle cx="14"  cy="127" r="5.5" fill="#E7FF52"/>
+
+  <!-- Right arm -->
+  <line x1="194" y1="162" x2="240" y2="130"
+        stroke="#1a1a1a" stroke-width="4" stroke-linecap="round"/>
+  <!-- Right hand -->
+  <circle cx="242" cy="127" r="8"   fill="#1a1a1a"/>
+  <circle cx="242" cy="127" r="5.5" fill="#E7FF52"/>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SPARKLE at the tip — energy radiating from the apex.
+       ═══════════════════════════════════════════════════════ -->
+
+  <!-- 4-point star at apex -->
+  <g transform="translate(128,38)">
+    <path d="M0,-9 L2,-2 L9,0 L2,2 L0,9 L-2,2 L-9,0 L-2,-2 Z"
+          fill="white" opacity="0.75"/>
+  </g>
+
+  <!-- Two tiny dot sparkles flanking the apex -->
+  <circle cx="114" cy="52" r="2.5" fill="white" opacity="0.50"/>
+  <circle cx="142" cy="52" r="2.5" fill="white" opacity="0.50"/>
+
+  <!-- Surface sheen — a subtle elongated highlight on the
+       upper-left face of the triangle body -->
+  <ellipse cx="92" cy="115" rx="7" ry="3"
+           fill="white" opacity="0.22"
+           transform="rotate(-55 92 115)"/>
+
+</svg>
