@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trigger Support",
+  title: "Trigger.dev - AI Support Agent",
   description: "AI support assistant for Trigger.dev",
 };
 
