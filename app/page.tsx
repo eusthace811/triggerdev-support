@@ -1,4 +1,5 @@
 import { Chat } from "./components/chat";
+import { ReindexButton } from "./components/reindex-button";
 import Image from "next/image";
 
 export default function Home() {
@@ -9,7 +10,8 @@ export default function Home() {
         <span className="text-sm font-medium text-muted-foreground border border-zinc-700 rounded px-1.5 py-0.5 leading-tight">
           Support
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <ReindexButton />
           <a
             href="/"
             className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-zinc-500 transition-colors"
