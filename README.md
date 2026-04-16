@@ -171,6 +171,37 @@ public/            — logo.svg, triggerito.svg
 
 ---
 
+## Production deployment
+
+The project is deployed at [triggerdev-support.vercel.app](https://triggerdev-support.vercel.app).
+
+### Deploying to Vercel
+
+1. **Deploy the Trigger.dev worker** — the worker must be deployed to Trigger.dev cloud (not just running locally with `trigger:dev`). Follow the [Trigger.dev deployment docs](https://trigger.dev/docs/deploying).
+
+2. **Set environment variables** in both Vercel and your Trigger.dev project dashboard:
+   - `TRIGGER_SECRET_KEY` — use a production key (`tr_prod_...`), not a dev key
+   - `TRIGGER_PROJECT_REF`, `OPENROUTER_API_KEY`, `OPENAI_API_KEY` — same as local
+   - `GITHUB_TOKEN` — recommended for indexing
+
+3. **Index the documentation** in production:
+
+   ```bash
+   curl -X POST https://triggerdev-support.vercel.app/api/index-docs
+   ```
+
+   This triggers the `index-docs` task on the Trigger.dev cloud worker. The LanceDB data is stored on the worker's filesystem, not on Vercel's ephemeral serverless filesystem.
+
+4. **Verify** — open the [Trigger.dev dashboard](https://cloud.trigger.dev) to watch the indexing run complete (~5–10 minutes), then ask a question in the chat.
+
+### Production considerations
+
+- **LanceDB runs on the Trigger.dev worker**, not on Vercel. The API route only triggers tasks by string ID — it never imports LanceDB.
+- **Vercel's serverless filesystem is ephemeral** — no persistent storage is needed on Vercel since all vector DB operations happen on the Trigger.dev worker.
+- **Re-indexing** works the same in production: `curl -X POST https://triggerdev-support.vercel.app/api/index-docs`
+
+---
+
 ## Known limitations
 
 - **Multi-step tool calling doesn't work yet.** The `chat.agent()` prerelease ends the stream after the first LLM finish event. `maxSteps` cannot fire a second step, so the pre-fetch pattern is required. This will be fixed in a future SDK release.
