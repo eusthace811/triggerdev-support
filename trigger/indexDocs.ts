@@ -126,6 +126,13 @@ export const indexDocsTask = task({
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Max characters per chunk. Sections longer than this are split into overlapping sub-chunks. */
+const CHUNK_CAP = 1500;
+/** Overlap between consecutive sub-chunks so context isn't lost at boundaries. */
+const CHUNK_OVERLAP = 200;
+/** Minimum body length to index a section (lowered to catch tables and short dense content). */
+const MIN_BODY = 40;
+
 function chunkMdx(filePath: string, raw: string): Omit<DocChunk, "vector">[] {
   // Strip frontmatter block
   const noFrontmatter = raw.replace(/^---[\s\S]*?---\s*\n/, "");
@@ -149,30 +156,56 @@ function chunkMdx(filePath: string, raw: string): Omit<DocChunk, "vector">[] {
       firstNewline === -1 ? trimmed : trimmed.slice(0, firstNewline);
     const body = firstNewline === -1 ? "" : trimmed.slice(firstNewline + 1).trim();
 
-    const heading = headingLine.replace(/^#{2,3}\s+/, "").trim() || "Overview";
+    // Detect whether this is a pre-heading intro (no ## prefix)
+    const isHeading = /^#{2,3}\s+/.test(headingLine);
+    const heading = isHeading
+      ? headingLine.replace(/^#{2,3}\s+/, "").trim()
+      : "Overview";
 
-    if (body.length < 80) continue; // skip stubs
+    if (body.length < MIN_BODY) continue;
 
     const safeId = heading.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
-    chunks.push({
-      id: `${filePath}#${safeId}`,
-      file_path: filePath,
-      section: heading,
-      content: body.slice(0, 2500), // cap per chunk
-      url,
-    });
+    // Split large sections into overlapping sub-chunks
+    if (body.length <= CHUNK_CAP) {
+      chunks.push({
+        id: `${filePath}#${safeId}`,
+        file_path: filePath,
+        section: heading,
+        content: body,
+        url,
+      });
+    } else {
+      let offset = 0;
+      let part = 0;
+      while (offset < body.length) {
+        const end = Math.min(offset + CHUNK_CAP, body.length);
+        const slice = body.slice(offset, end);
+        // Don't emit a tail chunk smaller than CHUNK_OVERLAP — it adds no new signal
+        if (slice.length > CHUNK_OVERLAP) {
+          chunks.push({
+            id: `${filePath}#${safeId}-p${part}`,
+            file_path: filePath,
+            section: heading,
+            content: slice,
+            url,
+          });
+          part++;
+        }
+        offset += CHUNK_CAP - CHUNK_OVERLAP;
+      }
+    }
   }
 
   // Fallback: treat the whole file as one chunk if no headings were found
-  if (chunks.length === 0 && cleaned.trim().length > 80) {
+  if (chunks.length === 0 && cleaned.trim().length >= MIN_BODY) {
     const name =
       filePath.split("/").pop()?.replace(/\.mdx?$/, "") ?? "Doc";
     chunks.push({
       id: filePath,
       file_path: filePath,
       section: name,
-      content: cleaned.trim().slice(0, 1200),
+      content: cleaned.trim().slice(0, CHUNK_CAP),
       url,
     });
   }

@@ -41,7 +41,7 @@ export async function runSearch(query: string): Promise<SearchResult[]> {
     .fullTextSearch(query, { columns: ["content"] })
     .rerank(reranker)
     .select(["id", "section", "content", "url", "file_path"])
-    .limit(8)
+    .limit(12)
     .toArray();
 
   return rows.map((r) => ({

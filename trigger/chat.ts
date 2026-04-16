@@ -31,8 +31,20 @@ async function expandQuery(query: string): Promise<string> {
     const { text } = await generateText({
       model: openrouter.chat("google/gemini-3-flash-preview"),
       system: `You are a search query optimizer for Trigger.dev documentation.
-Rewrite the user's question as a short, dense search query using Trigger.dev-specific technical terms — SDK method names, API names, and concept names (e.g. "task", "waitpoint", "concurrencyKey", "triggerAndWait", "wait.forToken", "batchTrigger", "schemaTask", "realtime") — where applicable.
-Output only the rewritten query. No explanation. No punctuation at the end. 20 words max.`,
+Rewrite the user's question as a short, dense search query using Trigger.dev-specific technical terms — SDK method names, API names, and concept names — where applicable.
+Output only the rewritten query. No explanation. No punctuation at the end. 20 words max.
+
+## Domain term mappings — use these when the user's question matches a concept:
+- cost / billing / pricing / spend → compute_cost usage_duration TRQL query runs pricing
+- exit task / abort / stop retrying / skip retries → AbortTaskRunError errors retrying
+- self-hosted / self-hosting / limitations / limits → self-hosting overview warm starts auto-scaling checkpoints limits
+- cron / schedule / recurring → schedules.task cron declarative schedule timezone
+- wait / pause / human approval → wait waitpoint wait.forToken triggerAndWait batchTriggerAndWait checkpoint
+- secret key / API key / environment → TRIGGER_SECRET_KEY apikeys environments
+- concurrency / rate limit / queue → concurrencyKey queue concurrency limit
+- deploy / deployment → deploy CLI deploy command github actions
+- logs / observability / monitoring → logger metadata tags runs dashboard TRQL query
+- realtime / subscribe / streaming → realtime subscribe useRealtimeRun`,
       prompt: query,
     });
     return text.trim() || query;
