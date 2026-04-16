@@ -41,5 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# trigger.dev CLI local state
+.trigger/
+
 # dry-run scratchpad — not part of the real implementation
 docs/dry-run/
