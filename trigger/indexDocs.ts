@@ -114,9 +114,10 @@ export const indexDocsTask = task({
       { mode: "overwrite" }
     );
 
-    // 7. Create full-text search (BM25) index on the content column
+    // 7. Create full-text search (BM25) indexes on content and section columns
     await table.createIndex("content", { config: lancedb.Index.fts() });
-    logger.info("FTS index created");
+    await table.createIndex("section", { config: lancedb.Index.fts() });
+    logger.info("FTS indexes created (content + section)");
 
     return { files: files.length, chunks: rows.length };
   },
@@ -138,10 +139,17 @@ function chunkMdx(filePath: string, raw: string): Omit<DocChunk, "vector">[] {
   const noFrontmatter = raw.replace(/^---[\s\S]*?---\s*\n/, "");
   // Strip MDX import lines
   const noImports = noFrontmatter.replace(/^import\s+.*$/gm, "");
-  // Remove JSX tags (keep any plain text between them)
-  const cleaned = noImports.replace(/<\/?[A-Za-z][A-Za-z0-9.]*(?:\s[^>]*)?\/?>/g, " ");
+  // Convert semantic JSX tags to markdown labels so their content is preserved with context
+  const withLabels = noImports
+    .replace(/<(Note|Tip|Warning|Info|Callout|Important)(?:\s[^>]*)?>/gi, "\n**$1:** ")
+    .replace(/<\/(Note|Tip|Warning|Info|Callout|Important)>/gi, "\n");
+  // Remove remaining JSX tags (keep any plain text between them)
+  const cleaned = withLabels.replace(/<\/?[A-Za-z][A-Za-z0-9.]*(?:\s[^>]*)?\/?>/g, " ");
 
   const url = pathToUrl(filePath);
+  // Page context prefix for BM25 — e.g. "Page: self-hosting/overview"
+  const pageSlug = filePath.replace(/^docs\//, "").replace(/\.mdx?$/, "");
+  const pageContext = `Page: ${pageSlug}`;
   const chunks: Omit<DocChunk, "vector">[] = [];
 
   // Split on h2 / h3 headings; keep heading line attached to the section
@@ -166,21 +174,25 @@ function chunkMdx(filePath: string, raw: string): Omit<DocChunk, "vector">[] {
 
     const safeId = heading.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
+    // Prefix with page context so BM25 can match on page-level terms
+    const prefix = `${pageContext} | Section: ${heading}\n\n`;
+    const prefixedBody = prefix + body;
+
     // Split large sections into overlapping sub-chunks
-    if (body.length <= CHUNK_CAP) {
+    if (prefixedBody.length <= CHUNK_CAP) {
       chunks.push({
         id: `${filePath}#${safeId}`,
         file_path: filePath,
         section: heading,
-        content: body,
+        content: prefixedBody,
         url,
       });
     } else {
       let offset = 0;
       let part = 0;
-      while (offset < body.length) {
-        const end = Math.min(offset + CHUNK_CAP, body.length);
-        const slice = body.slice(offset, end);
+      while (offset < prefixedBody.length) {
+        const end = Math.min(offset + CHUNK_CAP, prefixedBody.length);
+        const slice = prefixedBody.slice(offset, end);
         // Don't emit a tail chunk smaller than CHUNK_OVERLAP — it adds no new signal
         if (slice.length > CHUNK_OVERLAP) {
           chunks.push({
@@ -205,7 +217,7 @@ function chunkMdx(filePath: string, raw: string): Omit<DocChunk, "vector">[] {
       id: filePath,
       file_path: filePath,
       section: name,
-      content: cleaned.trim().slice(0, CHUNK_CAP),
+      content: `${pageContext} | Section: ${name}\n\n${cleaned.trim().slice(0, CHUNK_CAP)}`,
       url,
     });
   }

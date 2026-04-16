@@ -14,17 +14,21 @@ export interface SearchResult {
 
 const LANCEDB_URI = process.env.LANCEDB_URI ?? path.join(process.cwd(), "lancedb-data");
 
-/** Shared search logic — called directly in the chat agent to avoid waitpoint suspension */
-export async function runSearch(query: string): Promise<SearchResult[]> {
+/** Max results to return after deduplication */
+const MAX_RESULTS = 12;
+
+/**
+ * Multi-query search: runs both the expanded query and original query,
+ * merges results, and deduplicates by chunk ID. This ensures both
+ * semantic (expanded) and exact-term (original) signals are captured.
+ */
+export async function runSearch(
+  expandedQuery: string,
+  originalQuery?: string
+): Promise<SearchResult[]> {
   const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  const [{ embedding }, db] = await Promise.all([
-    embed({
-      model: openai.embedding("text-embedding-3-small"),
-      value: query,
-    }),
-    lancedb.connect(LANCEDB_URI),
-  ]);
+  const db = await lancedb.connect(LANCEDB_URI);
 
   let table: lancedb.Table;
   try {
@@ -35,16 +39,49 @@ export async function runSearch(query: string): Promise<SearchResult[]> {
 
   const reranker = await lancedb.rerankers.RRFReranker.create();
 
-  const rows = await table
+  // Run primary search on the expanded query
+  const { embedding: expandedEmb } = await embed({
+    model: openai.embedding("text-embedding-3-small"),
+    value: expandedQuery,
+  });
+
+  const primaryRows = await table
     .query()
-    .nearestTo(Float32Array.from(embedding))
-    .fullTextSearch(query, { columns: ["content"] })
+    .nearestTo(Float32Array.from(expandedEmb))
+    .fullTextSearch(expandedQuery, { columns: ["content"] })
     .rerank(reranker)
     .select(["id", "section", "content", "url", "file_path"])
-    .limit(12)
+    .limit(MAX_RESULTS)
     .toArray();
 
-  return rows.map((r) => ({
+  // If we have a different original query, run a secondary search and merge
+  const effectiveOriginal = originalQuery?.trim();
+  if (effectiveOriginal && effectiveOriginal !== expandedQuery) {
+    const { embedding: originalEmb } = await embed({
+      model: openai.embedding("text-embedding-3-small"),
+      value: effectiveOriginal,
+    });
+
+    const secondaryRows = await table
+      .query()
+      .nearestTo(Float32Array.from(originalEmb))
+      .fullTextSearch(effectiveOriginal, { columns: ["content"] })
+      .rerank(reranker)
+      .select(["id", "section", "content", "url", "file_path"])
+      .limit(6)
+      .toArray();
+
+    // Merge: deduplicate by chunk ID, primary results take priority
+    const seenIds = new Set(primaryRows.map((r) => String(r.id)));
+    for (const row of secondaryRows) {
+      if (!seenIds.has(String(row.id))) {
+        primaryRows.push(row);
+        seenIds.add(String(row.id));
+      }
+    }
+  }
+
+  return primaryRows.slice(0, MAX_RESULTS).map((r) => ({
     section: String(r.section ?? ""),
     content: String(r.content ?? ""),
     url: String(r.url ?? ""),
@@ -58,5 +95,5 @@ export const searchDocsTask = schemaTask({
   schema: z.object({
     query: z.string().describe("Natural language question about Trigger.dev"),
   }),
-  run: ({ query }) => runSearch(query),
+  run: ({ query }) => runSearch(query, query),
 });

@@ -17,6 +17,7 @@ const SYSTEM_PROMPT = `You are Triggerito, a Trigger.dev support agent. Answer d
 - Never invent or extrapolate API signatures, parameter names, property names, or return value shapes. If the retrieved docs do not explicitly show a method's exact usage, tell the user to check the official docs page directly rather than guessing.
 - If the docs don't cover something, say so clearly — do not guess.
 - Be concise and technical. These are developers; skip the hand-holding.
+- When the context contains specific values (environment variable names, key prefixes like \`tr_prod_\`, numeric limits like 128KB, SDK class names), always include them in your answer. Developers need exact names and values, not paraphrases.
 - If a user reports an error, ask for the full error message and relevant code if not already provided.`;
 
 /**
@@ -81,7 +82,7 @@ export const myChat = chat.agent({
     // Pre-fetch pattern required: chat.agent() ends the stream after the first finish
     // event, so maxSteps / multi-step tool calling doesn't work yet.
     const searchQuery = await expandQuery(query);
-    const searchResults = await runSearch(searchQuery);
+    const searchResults = await runSearch(searchQuery, query);
 
     const systemWithContext = `${SYSTEM_PROMPT}
 
