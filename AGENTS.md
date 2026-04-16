@@ -101,8 +101,25 @@ TRIGGER_PROJECT_REF=proj_...         # Project reference ID
 OPENROUTER_API_KEY=sk-or-v1-...     # OpenRouter — used for Gemini 3 Flash
 OPENAI_API_KEY=sk-proj-...          # OpenAI — used only for text-embedding-3-small
 GITHUB_TOKEN=ghp_...                 # Optional — higher GitHub API rate limits during indexing
-LANCEDB_URI=./lancedb-data           # Optional — defaults to this path
+LANCEDB_URI=db://your-db-name       # LanceDB Cloud URI (local dev can use ./lancedb-data)
+LANCEDB_API_KEY=sk_...              # LanceDB Cloud API key (omit for local filesystem)
 ```
+
+## Deploying to production
+
+```bash
+# 1. Deploy the Trigger.dev worker (reads .env.prod)
+npm run trigger:deploy
+
+# 2. Push to main — Vercel auto-deploys the frontend
+
+# 3. Re-index docs in prod after deploy
+curl -X POST https://triggerdev-support.vercel.app/api/index-docs
+```
+
+**LanceDB Cloud is required for production.** Deployed Trigger.dev workers run in ephemeral containers — `index-docs` and `trigger-support` tasks don't share a filesystem. Local LanceDB (`./lancedb-data`) only works in local dev. Set `LANCEDB_URI=db://...` and `LANCEDB_API_KEY` in `.env.prod` and in the Trigger.dev prod environment variables.
+
+**`build.external`** in `trigger.config.ts` marks `@lancedb/lancedb` and `apache-arrow` as external — they contain native binaries that can't be bundled, so they're installed via npm at runtime in the deploy container instead.
 
 ## Coding conventions
 
