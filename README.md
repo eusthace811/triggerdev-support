@@ -11,13 +11,19 @@ Built with the Trigger.dev `chat.agent()` prerelease SDK, LanceDB hybrid search,
 ```
 User question
   ↓
-Query expansion          — natural language → dense SDK terms (better BM25 recall)
+Query expansion     — Gemini rewrites natural language to dense SDK terms (better BM25 recall)
   ↓
-Hybrid search            — vector + BM25 over indexed docs → RRF reranked top 8 chunks
+Vector search       — embed expanded query with text-embedding-3-small → cosine nearest neighbors
   ↓
-Grounded generation      — Gemini 3 Flash streams an answer citing every source inline
+BM25 search         — full-text search over doc chunks in LanceDB
   ↓
-Citation rendering       — streamed text parsed into badges with hover cards linking to docs
+RRF reranking       — Reciprocal Rank Fusion merges both result sets → top 8 chunks
+  ↓
+Context injection   — chunks formatted as Markdown sections, injected into system prompt
+  ↓
+Grounded generation — Gemini 3 Flash streams an answer with inline citations
+  ↓
+Citation rendering  — streamed text split on citation pattern → inline badges with hover cards
 ```
 
 The agent runs as a `chat.agent()` task on Trigger.dev. The Next.js frontend connects to it via `useTriggerChatTransport` and streams the response in real time.
@@ -68,13 +74,14 @@ cp .env.example .env.local
 
 Edit `.env.local`:
 
-```env
-TRIGGER_SECRET_KEY=tr_dev_...        # Trigger.dev project secret key
-TRIGGER_PROJECT_REF=proj_...         # Your project reference ID
-OPENROUTER_API_KEY=sk-or-v1-...     # OpenRouter — for Gemini 3 Flash
-OPENAI_API_KEY=sk-proj-...          # OpenAI — for text-embedding-3-small
-GITHUB_TOKEN=ghp_...                 # Optional — higher rate limits during indexing
-```
+| Variable | Required | Description |
+|---|---|---|
+| `TRIGGER_SECRET_KEY` | Yes | Trigger.dev project secret key (`tr_dev_...`) |
+| `TRIGGER_PROJECT_REF` | Yes | Your project reference ID (`proj_...`) |
+| `OPENROUTER_API_KEY` | Yes | OpenRouter API key — used for Gemini 3 Flash |
+| `OPENAI_API_KEY` | Yes | OpenAI API key — used only for `text-embedding-3-small` |
+| `GITHUB_TOKEN` | No | Personal access token — avoids GitHub's 60 req/hr rate limit during indexing |
+| `LANCEDB_URI` | No | Path to LanceDB data directory (default: `./lancedb-data`) |
 
 ### 3. Start the Trigger.dev worker
 
@@ -110,6 +117,16 @@ The agent is ready. Try:
 - *What happens if my task crashes halfway through?*
 - *How do I run only one job at a time per customer?*
 - *How do I stream AI responses from a background task to the frontend?*
+
+---
+
+## Re-indexing
+
+The indexing task uses `mode: "overwrite"` when creating the LanceDB table, so it is safe to re-run at any time. Re-trigger it whenever the Trigger.dev docs change significantly:
+
+```bash
+curl -X POST http://localhost:3000/api/index-docs
+```
 
 ---
 
@@ -149,3 +166,15 @@ public/            — logo.svg, triggerito.svg
 **Pre-fetch search pattern.** The prerelease `chat.agent()` ends the stream after the first LLM finish event, before `maxSteps` can trigger a second step. To work around this, search results are fetched *before* the stream starts and injected into the system prompt as context. When multi-step tool calling is supported in a future SDK release, this can be replaced with a proper tool call.
 
 **Citation grounding.** The system prompt instructs the model to cite every source as `([label](https://trigger.dev/docs/...))`. The chat component's `parseTextWithCitations` splits the completed text on this pattern and renders each citation as an inline badge with a hover card linking to the live docs page.
+
+**OpenRouter `.chat()` endpoint.** The Gemini model is accessed via `openai.chat("google/gemini-3-flash-preview")` — not `openai.responses()`. OpenRouter's default endpoint accepts the standard Chat Completions format.
+
+---
+
+## Known limitations
+
+- **Multi-step tool calling doesn't work yet.** The `chat.agent()` prerelease ends the stream after the first LLM finish event. `maxSteps` cannot fire a second step, so the pre-fetch pattern is required. This will be fixed in a future SDK release.
+
+- **LanceDB is local, not shared.** The embedded LanceDB instance writes to a local directory on the Trigger.dev worker. In a production multi-worker setup, you would need a shared object store (e.g., S3) or a remote vector database.
+
+- **GitHub rate limits.** Without a `GITHUB_TOKEN`, the GitHub API limits unauthenticated requests to 60/hour. For the ~300 MDX files in the Trigger.dev docs this is fine if you run indexing once, but can fail on repeated runs. A personal access token removes the limit.
