@@ -138,8 +138,16 @@ const LOADING_PHRASES = [
   "Searching docs…",
   "Reading the docs…",
   "Looking it up…",
-  "On it…",
   "Checking the docs…",
+  "Digging through the codebase…",
+  "Consulting the API reference…",
+  "Parsing the examples…",
+  "Cross-referencing guides…",
+  "Almost there…",
+  "Connecting the dots…",
+  "Scanning for best practices…",
+  "Pulling up the relevant section…",
+  "Crunching the context…",
 ];
 
 const SUGGESTIONS = [
