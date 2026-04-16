@@ -127,10 +127,10 @@ const LOADING_PHRASES = [
 ];
 
 const SUGGESTIONS = [
-  "How do I pause a job until a human approves it?",
-  "What happens if my task crashes halfway through?",
-  "How do I run only one job at a time per customer?",
-  "How do I stream AI responses from a background task to the frontend?",
+  "What are the limitations of the self-hosted version?",
+  "Does waiting time in triggerAndWait count as compute time?",
+  "How do I run a cron job every 30 minutes?",
+  "How do I exit a task early if certain criteria are met?",
 ];
 
 
