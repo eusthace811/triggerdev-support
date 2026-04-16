@@ -91,6 +91,7 @@ type CitationPart =
  */
 function parseTextWithCitations(text: string): CitationPart[] {
   const parts: CitationPart[] = [];
+  const seen = new Set<string>();
   // Also consume any trailing punctuation (e.g. the "." in "([label](url)).")
   // so it doesn't become an orphaned line after the badge.
   const regex = /\s*\(\[([^\]]+)\]\((https:\/\/trigger\.dev\/docs\/[^)]+)\)\)[.!?,;]?/g;
@@ -103,10 +104,14 @@ function parseTextWithCitations(text: string): CitationPart[] {
     }
     const rawLabel = match[1];
     const url = match[2];
-    const label = cleanLabel(rawLabel);
-    const isGeneric = GENERIC_LABELS.has(label.toLowerCase().trim());
-    const title = isGeneric ? urlToTitle(url) : label;
-    parts.push({ type: "citation", url, title });
+    // Skip duplicate URLs so badge count matches Sources count
+    if (!seen.has(url)) {
+      seen.add(url);
+      const label = cleanLabel(rawLabel);
+      const isGeneric = GENERIC_LABELS.has(label.toLowerCase().trim());
+      const title = isGeneric ? urlToTitle(url) : label;
+      parts.push({ type: "citation", url, title });
+    }
     lastIndex = match.index + match[0].length;
   }
 
