@@ -1,0 +1,104 @@
+Question,Answer,
+what is the limitation of self hosted version?,"The self-hosted version has these key limitations compared to Trigger.dev Cloud (from the [self-hosting overview](/self-hosting/overview)):
+
+**Missing features:**
+- **Warm starts** – not available (faster startups for consecutive runs)
+- **Auto-scaling** – no automatic worker node scaling
+- **Checkpoints** – no non-blocking waits (less resource efficiency)
+- **Dedicated support** – only community/Discord support
+
+**Hardcoded limits (not configurable):**
+- I/O packet length: 128KB
+- Alerts, Schedules, Team members, Preview branches: all capped at 100M
+
+Most other limits (concurrency, rate limits, queued tasks, payloads, batch size, log size, machines, OTel) **are configurable** via environment variables. You're also fully responsible for security, uptime, scaling, and data integrity.
+
+```suggestions
+(Self-hosting overview)[/self-hosting/overview]
+(Self-hosting with Docker)[/self-hosting/docker]
+(Self-hosting with Kubernetes)[/self-hosting/kubernetes]
+```",
+Does the waiting time of triggerAndWait and batchTriggerAndWait called within a trigger counts as computing time?,"No, the waiting time does **not** count as compute time. When you use `triggerAndWait()` or `batchTriggerAndWait()`, the parent task is checkpointed (paused), and the waiting period does **not** count towards compute usage.
+
+This is documented on the [Wait: Overview](/wait) page.
+
+```suggestions
+(Wait: Overview)[/wait]
+(How to reduce your spend)[/how-to-reduce-your-spend]
+(Triggering tasks)[/triggering]
+```",
+run cron every 30 min s,"To run a cron every 30 minutes, use the cron pattern `*/30 * * * *` in your `schedules.task()`:
+
+```ts
+import { schedules } from ""@trigger.dev/sdk"";
+
+export const myTask = schedules.task({
+  id: ""every-30-min-task"",
+  cron: ""*/30 * * * *"",
+  run: async (payload) => {
+    // your logic here
+  },
+});
+```
+
+This is a **declarative schedule** that syncs when you run `dev` or `deploy`. You can also specify a timezone by passing an object to `cron` with `pattern` and `timezone` properties.
+
+See [Scheduled tasks (cron)](/tasks/scheduled) for full details.
+
+```suggestions
+(Scheduled tasks (cron))[/tasks/scheduled]
+(Create Schedule via SDK)[/management/schedules/create]
+```",
+how to get the cost of the runs,"You can get the cost of runs using the `compute_cost` column in the `runs` table via TRQL queries. For example, to find the **top 10 most expensive runs**:
+
+```sql
+SELECT
+  run_id,
+  task_identifier,
+  compute_cost,
+  usage_duration,
+  triggered_at
+FROM runs
+WHERE compute_cost > 0
+ORDER BY compute_cost DESC
+LIMIT 10
+```
+
+You can also format costs using `prettyFormat(compute_cost, 'costInDollars')`. Queries can be run via the dashboard, SDK (`query.execute()`), or REST API.
+
+See the [Query page](/observability/query) for full details.",
+Can you show me the documentation page(s) for how to exit a task if certain criteria are met within my task (e.g. an API call failed)?,"You can **exit a task early and prevent retries** by throwing an `AbortTaskRunError`. This immediately fails the task attempt and disables any further retrying.
+
+```ts
+import { task, AbortTaskRunError } from ""@trigger.dev/sdk"";
+
+export const openaiTask = task({
+  id: ""openai-task"",
+  run: async (payload: { prompt: string }) => {
+    const chatCompletion = await openai.chat.completions.create({
+      messages: [{ role: ""user"", content: payload.prompt }],
+      model: ""gpt-3.5-turbo"",
+    });
+
+    if (chatCompletion.choices[0]?.message.content === undefined) {
+      throw new AbortTaskRunError(""OpenAI call failed"");
+    }
+
+    return chatCompletion.choices[0].message.content;
+  },
+});
+```
+
+Full details are on the [Errors & Retrying](/errors-retrying) page.
+
+```suggestions
+(Errors & Retrying)[/errors-retrying]
+(Cancel a run programmatically)[/management/runs/cancel]
+```",
+Where do I find the production secret key?,"You can find the **production secret key** on the **API keys page** in the [Trigger.dev dashboard](https://trigger.dev). Each environment (dev, staging, production, preview) has its own secret key. Set it as the `TRIGGER_SECRET_KEY` environment variable in your production environment.
+
+Production keys start with `tr_prod_`.
+
+```suggestions
+(API Keys)[/apikeys]
+```",
