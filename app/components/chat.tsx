@@ -44,7 +44,7 @@ import {
 import { HoverCardTrigger } from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
 import { CopyIcon } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 const GENERIC_LABELS = new Set([
   "docs", "source", "here", "link", "this", "documentation", "see docs", "reference",
@@ -150,12 +150,18 @@ export function Chat() {
   const { messages, sendMessage, stop, status } = useChat({ transport });
   const [inputText, setInputText] = useState("");
   const isGenerating = status === "streaming" || status === "submitted";
-  const loadingPhrase = useMemo(
-    () => LOADING_PHRASES[Math.floor(Math.random() * LOADING_PHRASES.length)],
-    // re-pick each time generation starts
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isGenerating],
-  );
+  const [loadingIndex, setLoadingIndex] = useState(0);
+  useEffect(() => {
+    if (!isGenerating) {
+      setLoadingIndex(Math.floor(Math.random() * LOADING_PHRASES.length));
+      return;
+    }
+    const interval = setInterval(() => {
+      setLoadingIndex((i) => (i + 1) % LOADING_PHRASES.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isGenerating]);
+  const loadingPhrase = LOADING_PHRASES[loadingIndex];
 
   const handleSubmit = ({ text }: { text: string }) => {
     if (!text.trim() || isGenerating) return;
