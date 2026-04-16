@@ -13,6 +13,7 @@ export interface SearchResult {
 }
 
 const LANCEDB_URI = process.env.LANCEDB_URI ?? path.join(process.cwd(), "lancedb-data");
+const LANCEDB_API_KEY = process.env.LANCEDB_API_KEY;
 
 /** Max results to return after deduplication */
 const MAX_RESULTS = 12;
@@ -28,7 +29,9 @@ export async function runSearch(
 ): Promise<SearchResult[]> {
   const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  const db = await lancedb.connect(LANCEDB_URI);
+  const db = await lancedb.connect(LANCEDB_URI, {
+    ...(LANCEDB_API_KEY ? { apiKey: LANCEDB_API_KEY, region: "us-east-1" } : {}),
+  });
 
   let table: lancedb.Table;
   try {

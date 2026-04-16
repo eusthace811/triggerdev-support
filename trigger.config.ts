@@ -6,4 +6,7 @@ export default defineConfig({
   logLevel: "log",
   maxDuration: 300,
   dirs: ["./trigger"],
+  build: {
+    external: ["@lancedb/lancedb", "apache-arrow"],
+  },
 });

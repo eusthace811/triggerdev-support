@@ -14,6 +14,7 @@ interface DocChunk {
 }
 
 const LANCEDB_URI = process.env.LANCEDB_URI ?? path.join(process.cwd(), "lancedb-data");
+const LANCEDB_API_KEY = process.env.LANCEDB_API_KEY;
 
 export const indexDocsTask = task({
   id: "index-docs",
@@ -107,7 +108,9 @@ export const indexDocsTask = task({
 
     // 6. Write to LanceDB (overwrite if exists)
     logger.info(`Writing ${rows.length} rows to LanceDB at ${LANCEDB_URI}...`);
-    const db = await lancedb.connect(LANCEDB_URI);
+    const db = await lancedb.connect(LANCEDB_URI, {
+      ...(LANCEDB_API_KEY ? { apiKey: LANCEDB_API_KEY, region: "us-east-1" } : {}),
+    });
     const table = await db.createTable(
       "docs",
       rows as unknown as Record<string, unknown>[],
