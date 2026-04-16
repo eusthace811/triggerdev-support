@@ -92,9 +92,7 @@ type CitationPart =
 function parseTextWithCitations(text: string): CitationPart[] {
   const parts: CitationPart[] = [];
   const seen = new Set<string>();
-  // Also consume any trailing punctuation (e.g. the "." in "([label](url)).")
-  // so it doesn't become an orphaned line after the badge.
-  const regex = /\s*\(\[([^\]]+)\]\((https:\/\/trigger\.dev\/docs\/[^)]+)\)\)[.!?,;]?/g;
+  const regex = /\s*\(\[([^\]]+)\]\((https:\/\/trigger\.dev\/docs\/[^)]+)\)\)[.!?,;:]?/g;
   let lastIndex = 0;
   let match;
 
@@ -104,7 +102,6 @@ function parseTextWithCitations(text: string): CitationPart[] {
     }
     const rawLabel = match[1];
     const url = match[2];
-    // Skip duplicate URLs so badge count matches Sources count
     if (!seen.has(url)) {
       seen.add(url);
       const label = cleanLabel(rawLabel);
@@ -120,6 +117,20 @@ function parseTextWithCitations(text: string): CitationPart[] {
   }
 
   return parts;
+}
+
+/**
+ * Strips any remaining bare markdown links to trigger.dev/docs that
+ * weren't caught by the citation pattern (e.g. multiple links inside
+ * one paren group). Replaces [label](url) with just the label text.
+ * This prevents Streamdown's link-safety popup from rendering <div>
+ * inside <p>, which causes a hydration error.
+ */
+function stripDocLinks(text: string): string {
+  return text.replace(
+    /\[([^\]]+)\]\(https:\/\/trigger\.dev\/docs\/[^)]+\)/g,
+    '$1'
+  );
 }
 
 const LOADING_PHRASES = [
@@ -198,7 +209,6 @@ export function Chat() {
                     m.role === "assistant" &&
                     status === "streaming";
 
-                  // Parse citation positions only after streaming is complete
                   const citationParts =
                     m.role === "assistant" && !isAnimating
                       ? parseTextWithCitations(part.text)
@@ -217,61 +227,56 @@ export function Chat() {
                     >
                       <MessageContent className="text-lg">
                         {isAnimating || !citationParts ? (
-                          // During streaming: render raw text as one block
                           <MessageResponse isAnimating={isAnimating}>
                             {part.text}
                           </MessageResponse>
                         ) : (
-                          // After streaming: interleave text segments and citation badges
-                          citationParts.map((p, pi) => {
-                            if (p.type === "citation") {
+                          <div className="citation-flow">
+                            {citationParts.map((p, pi) => {
+                              if (p.type === "citation") {
+                                return (
+                                  <InlineCitationCard key={pi}>
+                                    <HoverCardTrigger
+                                      render={
+                                        <Badge
+                                          variant="secondary"
+                                          className="cursor-pointer rounded-full text-xs font-medium"
+                                        />
+                                      }
+                                    >
+                                      {p.title}
+                                    </HoverCardTrigger>
+                                    <InlineCitationCardBody>
+                                      <InlineCitationCarousel>
+                                        <InlineCitationCarouselContent>
+                                          <InlineCitationCarouselItem>
+                                            <InlineCitationSource
+                                              title={p.title}
+                                              url={p.url}
+                                            />
+                                            <a
+                                              href={p.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="mt-2 inline-block text-xs text-primary underline-offset-4 hover:underline"
+                                            >
+                                              Open docs →
+                                            </a>
+                                          </InlineCitationCarouselItem>
+                                        </InlineCitationCarouselContent>
+                                      </InlineCitationCarousel>
+                                    </InlineCitationCardBody>
+                                  </InlineCitationCard>
+                                );
+                              }
+                              if (!p.content.trim()) return null;
                               return (
-                                <InlineCitationCard key={pi}>
-                                  <HoverCardTrigger
-                                    render={
-                                      <Badge
-                                        variant="secondary"
-                                        className="cursor-pointer rounded-full text-xs font-medium"
-                                      />
-                                    }
-                                  >
-                                    {p.title}
-                                  </HoverCardTrigger>
-                                  <InlineCitationCardBody>
-                                    <InlineCitationCarousel>
-                                      <InlineCitationCarouselContent>
-                                        <InlineCitationCarouselItem>
-                                          <InlineCitationSource
-                                            title={p.title}
-                                            url={p.url}
-                                          />
-                                          <a
-                                            href={p.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="mt-2 inline-block text-xs text-primary underline-offset-4 hover:underline"
-                                          >
-                                            Open docs →
-                                          </a>
-                                        </InlineCitationCarouselItem>
-                                      </InlineCitationCarouselContent>
-                                    </InlineCitationCarousel>
-                                  </InlineCitationCardBody>
-                                </InlineCitationCard>
+                                <MessageResponse key={pi} isAnimating={false}>
+                                  {stripDocLinks(p.content)}
+                                </MessageResponse>
                               );
-                            }
-                            // Text segment — skip empty/whitespace-only ones
-                            if (!p.content.trim()) return null;
-                            // Pure punctuation left after stripping parens → render as span
-                            if (/^[\s.!?,;:]+$/.test(p.content)) {
-                              return <span key={pi}>{p.content.trim()}</span>;
-                            }
-                            return (
-                              <MessageResponse key={pi} isAnimating={false}>
-                                {p.content}
-                              </MessageResponse>
-                            );
-                          })
+                            })}
+                          </div>
                         )}
                         {docSources.length > 0 && (
                           <Sources>

@@ -77,3 +77,21 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/*
+ * Citation flow: unwrap Streamdown block wrappers so that the last
+ * paragraph and the following InlineCitationCard badge share the
+ * same inline flow — no line break between text and badge.
+ */
+
+/* Remove the Streamdown wrapper box so its children join the flow */
+.citation-flow > div {
+  display: contents;
+}
+
+/* Make the last <p> inside each Streamdown section inline so the
+   badge that follows it sits on the same line */
+.citation-flow > div > p:last-child {
+  display: inline;
+}
+
